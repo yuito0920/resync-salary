@@ -56,6 +56,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
 .add-btn{width:100%;padding:16px;border:2px dashed #ccc;border-radius:14px;background:none;font-size:16px;color:#888;cursor:pointer;margin-bottom:12px}
 .add-btn:active{background:#f9f9f9}
 
+/* Lock Month Button */
+.lock-month-btn{width:100%;padding:16px;border:none;border-radius:14px;font-size:16px;font-weight:600;cursor:pointer;margin-bottom:12px}
+.lock-month-btn.lock{background:linear-gradient(135deg,#2B5797,#1a3d6e);color:#fff}
+.lock-month-btn.unlock{background:#FFF3E0;color:#E65100;border:2px solid #E65100}
+.lock-month-btn:disabled{opacity:.5;cursor:not-allowed}
+.locked-badge{display:inline-flex;align-items:center;gap:4px;background:#FFF3E0;color:#E65100;padding:4px 10px;border-radius:12px;font-size:12px;font-weight:600;margin-left:8px}
+.locked-overlay{position:absolute;inset:0;background:rgba(255,243,224,.95);border-radius:14px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px}
+.locked-overlay-text{font-size:14px;font-weight:700;color:#E65100}
+.locked-overlay-detail{font-size:11px;color:#B8860B}
+
 /* Modal */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;padding:20px}
 .modal-overlay.open{display:flex}
@@ -189,6 +199,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
     <div class="amount" id="totalReward">-</div>
     <div class="detail" id="totalDetail"></div>
   </div>
+  <div id="lockMonthButton"></div>
   <div id="clientCards"></div>
   <button class="add-btn" onclick="openAddClient()">+ 新しいお客様を追加</button>
 </div>
@@ -296,7 +307,8 @@ function defaultData(){return{
   config:{sessionPrice:18000,adReward:6000,selfReward:10000,monitorReward:2500,threshold:25,masterPin:'0000'},
   trainers:[], // {id,name,pin}
   clients:[], // {id,name,type,trainerId,customPrice,courses:[{id,total,used}]}
-  sessions:{} // {'YYYY-MM':{clientId:{count}}}
+  sessions:{}, // {'YYYY-MM':{clientId:{count}}}
+  lockedMonths:{} // {'YYYY-MM':{lockedAt:timestamp,lockedBy:trainerId}}
 }}
 
 let D=loadData();
@@ -317,6 +329,7 @@ function loadData(){
       if(d.config.selfReward===8000)d.config.selfReward=10000;
       d.trainers.forEach(t=>{if(!t.pin)t.pin='0000'});
       d.clients.forEach(c=>{if(!c.courses)c.courses=[];});
+      if(!d.lockedMonths)d.lockedMonths={};
       return d;
     }
     return defaultData();
@@ -559,10 +572,38 @@ function renderModalCourses(){
   </div>`).join('');
 }
 
+// ========== Lock Month Functions ==========
+function isMonthLocked(mk){
+  return D.lockedMonths[mk]?true:false;
+}
+function lockMonth(){
+  const m=mkKey(currentMonth);
+  if(isMonthLocked(m))return;
+  if(!confirm(`${mdsp(currentMonth)}を確定しますか？\n\n確定後はデータを編集できなくなります。\n（管理者のみ確定解除が可能です）`))return;
+  D.lockedMonths[m]={lockedAt:Date.now(),lockedBy:currentTrainer||'master'};
+  saveData();render();
+  alert(`${mdsp(currentMonth)}を確定しました。\nデータの変更はできません。`);
+}
+function unlockMonth(){
+  const m=mkKey(currentMonth);
+  if(!isMonthLocked(m))return;
+  if(!confirm(`${mdsp(currentMonth)}の確定を解除しますか？\n\n解除後はデータの編集が可能になります。`))return;
+  delete D.lockedMonths[m];
+  saveData();render();
+  alert(`${mdsp(currentMonth)}の確定を解除しました。`);
+}
+
 // ========== Session Count ==========
 function changeCount(cid,delta){
   const client=D.clients.find(c=>c.id===cid);if(!client)return;
   const m=mkKey(currentMonth);
+
+  // Check if month is locked
+  if(isMonthLocked(m)&&!isMaster){
+    alert('この月は確定済みのため編集できません。\n管理者に確定解除を依頼してください。');
+    return;
+  }
+
   if(!D.sessions[m])D.sessions[m]={};
   if(!D.sessions[m][cid])D.sessions[m][cid]={count:0};
   const nc=D.sessions[m][cid].count+delta;
@@ -671,6 +712,17 @@ function render(){
   document.getElementById('totalReward2').textContent=fmt(totalReward);
   document.getElementById('totalDetail2').textContent=totalCount+'セッション / '+clients.length+'名';
 
+  // Lock Month Button
+  const locked=isMonthLocked(m);
+  const lockBtn=document.getElementById('lockMonthButton');
+  if(locked&&isMaster){
+    lockBtn.innerHTML=`<button class="lock-month-btn unlock" onclick="unlockMonth()">🔓 ${md}の確定を解除（管理者）</button>`;
+  }else if(locked){
+    lockBtn.innerHTML=`<div style="background:#FFF3E0;padding:12px 16px;border-radius:12px;text-align:center;margin-bottom:16px"><span style="font-size:14px;font-weight:600;color:#E65100">🔒 ${md}は確定済みです</span><div style="font-size:12px;color:#B8860B;margin-top:4px">データの変更はできません</div></div>`;
+  }else{
+    lockBtn.innerHTML=`<button class="lock-month-btn lock" onclick="lockMonth()">🔒 ${md}を確定する</button>`;
+  }
+
   // Client cards
   const cardsEl=document.getElementById('clientCards');
   if(!clients.length){
@@ -687,7 +739,8 @@ function render(){
       const hasT=ti!==null;
       const noT=hasT&&ti.remaining<=0&&c.session.count===0;
       const tBadge=hasT?`<span class="client-badge badge-ticket ${ti.remaining<=0?'out':''}">残${ti.remaining}回</span>`:'';
-      const plusOff=hasT&&ti.remaining<=0?'disabled':'';
+      const plusOff=(hasT&&ti.remaining<=0)||locked?'disabled':'';
+      const minusOff=locked?'disabled':'';
       const disc=c.calc.discount||0;
 
       let brkText;
@@ -708,7 +761,7 @@ function render(){
         <div class="counter-row">
           <span class="counter-label">当月回数</span>
           <div class="counter">
-            <button class="minus" onclick="changeCount('${c.id}',-1)" ${c.session.count<=0?'disabled':''}>−</button>
+            <button class="minus" onclick="changeCount('${c.id}',-1)" ${c.session.count<=0||minusOff?'disabled':''}>−</button>
             <span class="count">${c.session.count}</span>
             <button class="plus" onclick="changeCount('${c.id}',1)" ${plusOff}>＋</button>
           </div>

@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>resync 給与計算</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;background:#f5f5f5;color:#333;-webkit-tap-highlight-color:transparent}
+.header{background:linear-gradient(135deg,#2B5797,#4472C4);color:#fff;padding:16px 20px;position:sticky;top:0;z-index:100}
+.header h1{font-size:20px;font-weight:700}
+.header-sub{font-size:12px;opacity:.8;margin-top:2px}
+.tabs{display:flex;background:#fff;border-bottom:2px solid #e0e0e0;position:sticky;top:60px;z-index:99;overflow-x:auto}
+.tab{flex:1;min-width:70px;padding:12px 6px;text-align:center;font-size:12px;font-weight:600;color:#888;cursor:pointer;border-bottom:3px solid transparent;transition:.2s;white-space:nowrap}
+.tab.active{color:#2B5797;border-bottom-color:#2B5797}
+.content{max-width:600px;margin:0 auto;padding:16px}
+.section{display:none}.section.active{display:block}
+.month-bar{display:flex;align-items:center;justify-content:space-between;background:#fff;border-radius:12px;padding:12px 16px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.month-bar button{width:40px;height:40px;border:none;background:#f0f0f0;border-radius:50%;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.month-bar button:active{background:#ddd}
+.month-label{font-size:18px;font-weight:700}
+.trainer-select{width:100%;padding:12px;border:2px solid #e0e0e0;border-radius:10px;font-size:16px;background:#fff;margin-bottom:16px;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='2' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+.summary-card{background:linear-gradient(135deg,#2B5797,#1a3d6e);color:#fff;border-radius:16px;padding:20px;margin-bottom:20px;text-align:center}
+.summary-card .label{font-size:13px;opacity:.8}
+.summary-card .amount{font-size:36px;font-weight:800;margin:8px 0}
+.summary-card .detail{font-size:12px;opacity:.7}
+.client-card{background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.client-card.no-ticket{opacity:.6;border:2px dashed #e74c3c}
+.client-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.client-name{font-size:16px;font-weight:700}
+.client-badges{display:flex;gap:4px;flex-wrap:wrap}
+.client-badge{font-size:11px;padding:3px 8px;border-radius:20px;font-weight:600}
+.badge-ad{background:#FFF2CC;color:#B8860B}
+.badge-self{background:#D6F5D6;color:#2E7D32}
+.badge-upgraded{background:#E8D5F5;color:#6A1B9A}
+.badge-monitor{background:#E3F2FD;color:#1565C0}
+.badge-ticket{background:#FFF3E0;color:#E65100;font-size:10px}
+.badge-ticket.out{background:#FFEBEE;color:#C62828}
+.client-info{display:flex;gap:12px;font-size:12px;color:#888;margin-bottom:12px;flex-wrap:wrap}
+.counter-row{display:flex;align-items:center;justify-content:space-between}
+.counter-label{font-size:13px;color:#666}
+.counter{display:flex;align-items:center}
+.counter button{width:48px;height:48px;border:none;border-radius:50%;font-size:24px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.counter button:disabled{opacity:.3;cursor:not-allowed}
+.counter .minus{background:#fee;color:#c00}
+.counter .minus:active:not(:disabled){background:#fcc}
+.counter .plus{background:#e8f5e9;color:#2e7d32}
+.counter .plus:active:not(:disabled){background:#c8e6c9}
+.counter .count{font-size:28px;font-weight:800;min-width:50px;text-align:center}
+.reward-row{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid #f0f0f0}
+.reward-label{font-size:12px;color:#888}
+.reward-amount{font-size:18px;font-weight:700;color:#2B5797}
+.reward-breakdown{font-size:11px;color:#999;margin-top:4px}
+.no-ticket-msg{color:#e74c3c;font-size:12px;font-weight:600;margin-top:8px;text-align:center}
+.add-btn{width:100%;padding:16px;border:2px dashed #ccc;border-radius:14px;background:none;font-size:16px;color:#888;cursor:pointer;margin-bottom:12px}
+.add-btn:active{background:#f9f9f9}
+
+/* Modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal{background:#fff;border-radius:16px;padding:24px;width:100%;max-width:440px;max-height:90vh;overflow-y:auto}
+.modal h2{font-size:18px;margin-bottom:16px}
+.modal label{display:block;font-size:14px;font-weight:600;margin-bottom:4px;margin-top:14px}
+.modal input,.modal select{width:100%;padding:12px;border:2px solid #e0e0e0;border-radius:10px;font-size:16px}
+.modal-actions{display:flex;gap:10px;margin-top:20px}
+.modal-actions button{flex:1;padding:14px;border:none;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer}
+.btn-cancel{background:#f0f0f0;color:#666}
+.btn-save{background:#2B5797;color:#fff}
+.btn-delete{background:#fee;color:#c00;padding:14px;border:none;border-radius:10px;font-size:14px;cursor:pointer;width:100%;margin-top:10px}
+
+.manage-card{background:#fff;border-radius:12px;padding:14px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 1px 3px rgba(0,0,0,.06);cursor:pointer}
+.manage-card:active{background:#f8f8f8}
+.manage-name{font-size:15px;font-weight:600}
+.manage-meta{font-size:12px;color:#888;margin-top:2px}
+
+.setting-group{background:#fff;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.setting-group h3{font-size:14px;font-weight:700;margin-bottom:12px;color:#2B5797}
+.setting-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f5f5f5}
+.setting-row:last-child{border-bottom:none}
+.setting-label{font-size:14px}
+.setting-val{display:flex;align-items:center;gap:4px}
+.setting-input{width:100px;padding:8px 10px;border:2px solid #e0e0e0;border-radius:8px;font-size:16px;text-align:right}
+.export-btn{width:100%;padding:14px;border:none;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer;margin-bottom:10px}
+.export-btn.primary{background:#2B5797;color:#fff}
+.export-btn.secondary{background:#f0f0f0;color:#333}
+
+.summary-table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:16px}
+.summary-table th{background:#2B5797;color:#fff;padding:10px 6px;font-size:11px;text-align:center}
+.summary-table td{padding:10px 6px;font-size:12px;text-align:center;border-bottom:1px solid #f0f0f0}
+.summary-table tr:last-child td{border-bottom:none}
+.summary-table .total-row{background:#FFF8E1;font-weight:700}
+
+.trainer-tag{display:inline-flex;align-items:center;gap:6px;background:#e8eef7;padding:6px 12px;border-radius:20px;margin:4px;font-size:14px}
+.trainer-tag .remove{cursor:pointer;color:#c00;font-weight:700}
+.trainer-input-row{display:flex;gap:8px;margin-top:12px}
+.trainer-input-row input{flex:1}
+.trainer-input-row button{padding:10px 20px;background:#2B5797;color:#fff;border:none;border-radius:10px;font-size:14px;cursor:pointer;white-space:nowrap}
+
+.empty{text-align:center;padding:40px 20px;color:#aaa}
+.empty-icon{font-size:48px;margin-bottom:12px}
+.empty-text{font-size:14px}
+
+.course-section{margin-top:14px;padding-top:14px;border-top:1px dashed #e0e0e0}
+.course-section h4{font-size:13px;color:#2B5797;margin-bottom:8px}
+.course-item{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:13px;border-bottom:1px solid #f8f8f8}
+.course-item:last-child{border-bottom:none}
+.input-row{display:flex;gap:8px;align-items:center;margin-top:6px}
+.input-row input{flex:1;padding:8px;border:2px solid #e0e0e0;border-radius:8px;font-size:14px}
+.input-row button{padding:8px 14px;border:none;border-radius:8px;font-size:14px;cursor:pointer;background:#2B5797;color:#fff;white-space:nowrap}
+.input-sm{width:80px!important;flex:none!important}
+.hint{font-size:11px;color:#999;margin-top:4px}
+
+/* Lock screen */
+.lock-overlay{display:none;position:fixed;inset:0;background:#f5f5f5;z-index:300;align-items:center;justify-content:center;flex-direction:column}
+.lock-overlay.open{display:flex}
+.lock-box{background:#fff;border-radius:20px;padding:40px 32px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.1);width:90%;max-width:340px}
+.lock-box h2{font-size:20px;margin-bottom:8px;color:#2B5797}
+.lock-box p{font-size:13px;color:#888;margin-bottom:20px}
+.pin-dots{display:flex;gap:12px;justify-content:center;margin-bottom:24px}
+.pin-dot{width:18px;height:18px;border-radius:50%;border:2px solid #ccc;background:#fff;transition:.2s}
+.pin-dot.filled{background:#2B5797;border-color:#2B5797}
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:240px;margin:0 auto}
+.pin-key{width:70px;height:56px;border:none;border-radius:12px;font-size:22px;font-weight:600;background:#f0f0f0;cursor:pointer;display:flex;align-items:center;justify-content:center;margin:0 auto}
+.pin-key:active{background:#ddd}
+.pin-key.del{font-size:14px;color:#c00}
+.pin-error{color:#c00;font-size:13px;margin-top:12px;min-height:20px}
+.lock-trainer-name{font-size:16px;font-weight:700;color:#333;margin-bottom:4px}
+
+/* Trainer PIN setup */
+.pin-setup-row{display:flex;gap:8px;align-items:center;margin-top:8px}
+.pin-display{font-size:14px;color:#2B5797;font-weight:600;letter-spacing:4px}
+</style>
+</head>
+<body>
+
+<!-- Lock Screen -->
+<div class="lock-overlay open" id="lockScreen">
+  <div class="lock-box">
+    <h2>resync 給与計算</h2>
+    <p>トレーナーを選択してPINを入力</p>
+    <select class="trainer-select" id="lockTrainerSelect" onchange="onLockTrainerChange()" style="margin-bottom:16px">
+      <option value="">-- トレーナーを選択 --</option>
+      <option value="__master__">管理者</option>
+    </select>
+    <div class="lock-trainer-name" id="lockTrainerName"></div>
+    <div class="pin-dots" id="pinDots">
+      <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
+    </div>
+    <div class="pin-pad">
+      <button class="pin-key" onclick="pinInput(1)">1</button>
+      <button class="pin-key" onclick="pinInput(2)">2</button>
+      <button class="pin-key" onclick="pinInput(3)">3</button>
+      <button class="pin-key" onclick="pinInput(4)">4</button>
+      <button class="pin-key" onclick="pinInput(5)">5</button>
+      <button class="pin-key" onclick="pinInput(6)">6</button>
+      <button class="pin-key" onclick="pinInput(7)">7</button>
+      <button class="pin-key" onclick="pinInput(8)">8</button>
+      <button class="pin-key" onclick="pinInput(9)">9</button>
+      <button class="pin-key" onclick="pinInput(0)">0</button>
+      <button class="pin-key del" onclick="pinDelete()">削除</button>
+    </div>
+    <div class="pin-error" id="pinError"></div>
+  </div>
+</div>
+
+<!-- Main App -->
+<div class="header">
+  <h1>resync 給与計算</h1>
+  <div class="header-sub" id="headerSub"></div>
+</div>
+<div class="tabs" id="mainTabs">
+  <div class="tab active" onclick="switchTab(0)">入力</div>
+  <div class="tab" onclick="switchTab(1)">レポート</div>
+  <div class="tab" onclick="switchTab(2)">お客様</div>
+  <div class="tab" onclick="switchTab(3)">設定</div>
+</div>
+<div class="content">
+
+<!-- Tab 0: Input -->
+<div class="section active" id="sec0">
+  <div class="month-bar">
+    <button onclick="changeMonth(-1)">&lt;</button>
+    <div class="month-label" id="monthLabel"></div>
+    <button onclick="changeMonth(1)">&gt;</button>
+  </div>
+  <div class="summary-card">
+    <div class="label">今月の報酬</div>
+    <div class="amount" id="totalReward">-</div>
+    <div class="detail" id="totalDetail"></div>
+  </div>
+  <div id="clientCards"></div>
+  <button class="add-btn" onclick="openAddClient()">+ 新しいお客様を追加</button>
+</div>
+
+<!-- Tab 1: Summary -->
+<div class="section" id="sec1">
+  <div class="month-bar">
+    <button onclick="changeMonth(-1)">&lt;</button>
+    <div class="month-label" id="monthLabel2"></div>
+    <button onclick="changeMonth(1)">&gt;</button>
+  </div>
+  <div class="summary-card">
+    <div class="label">月間報酬合計</div>
+    <div class="amount" id="totalReward2">-</div>
+    <div class="detail" id="totalDetail2"></div>
+  </div>
+  <table class="summary-table">
+    <thead><tr><th>お客様</th><th>区分</th><th>回数</th><th>単価</th><th>値引</th><th>報酬額</th></tr></thead>
+    <tbody id="summaryBody"></tbody>
+  </table>
+</div>
+
+<!-- Tab 2: Client Management -->
+<div class="section" id="sec2">
+  <button class="add-btn" onclick="openAddClient()">+ 新しいお客様を追加</button>
+  <div id="manageList"></div>
+</div>
+
+<!-- Tab 3: Settings -->
+<div class="section" id="sec3">
+  <div class="setting-group">
+    <h3>報酬設定</h3>
+    <div class="setting-row"><span class="setting-label">セッション定価</span><div class="setting-val"><input class="setting-input" id="cfgPrice" type="number" onchange="saveCfg()"><span>円</span></div></div>
+    <div class="setting-row"><span class="setting-label">広告 報酬単価</span><div class="setting-val"><input class="setting-input" id="cfgAd" type="number" onchange="saveCfg()"><span>円</span></div></div>
+    <div class="setting-row"><span class="setting-label">自己集客 報酬単価</span><div class="setting-val"><input class="setting-input" id="cfgSelf" type="number" onchange="saveCfg()"><span>円</span></div></div>
+    <div class="setting-row"><span class="setting-label">モニター 報酬単価</span><div class="setting-val"><input class="setting-input" id="cfgMonitor" type="number" onchange="saveCfg()"><span>円</span></div></div>
+    <div class="setting-row"><span class="setting-label">報酬アップ閾値</span><div class="setting-val"><input class="setting-input" id="cfgThresh" type="number" onchange="saveCfg()"><span>回</span></div></div>
+  </div>
+  <div class="setting-group" id="trainerSettingGroup">
+    <h3>トレーナー管理</h3>
+    <div id="trainerSettings"></div>
+    <div class="trainer-input-row">
+      <input id="newTrainerName" placeholder="トレーナー名">
+      <button onclick="addTrainer()">追加</button>
+    </div>
+  </div>
+  <div class="setting-group" id="masterPinGroup">
+    <h3>管理者PIN</h3>
+    <div class="setting-row">
+      <span class="setting-label">管理者PIN（4桁）</span>
+      <div class="setting-val"><input class="setting-input" id="cfgMasterPin" type="password" maxlength="4" placeholder="****" onchange="saveMasterPin()"></div>
+    </div>
+    <div class="hint" style="margin-top:4px">管理者PINで全トレーナーの情報を閲覧できます</div>
+  </div>
+  <div class="setting-group">
+    <h3>データ</h3>
+    <button class="export-btn primary" onclick="exportExcel()">Excel出力</button>
+    <button class="export-btn secondary" onclick="exportJSON()">バックアップ保存</button>
+    <button class="export-btn secondary" onclick="document.getElementById('importFile').click()">バックアップ復元</button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importJSON(event)">
+  </div>
+  <button class="export-btn secondary" onclick="lockApp()" style="margin-top:8px;color:#c00">ログアウト</button>
+</div>
+</div>
+
+<!-- Client Modal -->
+<div class="modal-overlay" id="clientModal">
+  <div class="modal">
+    <h2 id="modalTitle">お客様追加</h2>
+    <label>お客様名</label>
+    <input id="modalName" placeholder="例: 佐藤 太郎">
+    <label>集客区分</label>
+    <select id="modalType" onchange="onModalTypeChange()">
+      <option value="ad">広告経由</option>
+      <option value="self">自己集客</option>
+      <option value="monitor">モニター</option>
+    </select>
+    <div id="modalPriceSection">
+      <label>お客様への請求単価</label>
+      <input id="modalPrice" type="number" placeholder="空欄なら定価18,000円">
+      <div class="hint">定価と異なる場合のみ入力。自己集客の場合、定価との差額が報酬から差引されます</div>
+    </div>
+    <div class="course-section">
+      <h4>コース（チケット）管理</h4>
+      <div id="modalCourses"></div>
+      <div class="input-row" style="margin-top:10px">
+        <input id="modalCourseTickets" type="number" class="input-sm" placeholder="回数">
+        <span style="font-size:13px">回チケット</span>
+        <button onclick="addCourseInModal()">追加</button>
+      </div>
+      <div class="hint">残数0でセッション入力不可になります</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">キャンセル</button>
+      <button class="btn-save" onclick="saveClient()">保存</button>
+    </div>
+    <button class="btn-delete" id="modalDelete" style="display:none" onclick="deleteClient()">このお客様を削除</button>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY='resync_v3';
+
+function defaultData(){return{
+  config:{sessionPrice:18000,adReward:6000,selfReward:10000,monitorReward:2500,threshold:25,masterPin:'0000'},
+  trainers:[], // {id,name,pin}
+  clients:[], // {id,name,type,trainerId,customPrice,courses:[{id,total,used}]}
+  sessions:{} // {'YYYY-MM':{clientId:{count}}}
+}}
+
+let D=loadData();
+let currentTrainer='';
+let isMaster=false;
+let currentMonth=new Date();currentMonth.setDate(1);
+let editingClientId=null;
+let modalCoursesBuf=[];
+let pinBuffer='';
+let lockSelectedTrainer='';
+
+function loadData(){
+  try{
+    const d=JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if(d&&d.config){
+      if(!d.config.monitorReward)d.config.monitorReward=2500;
+      if(!d.config.masterPin)d.config.masterPin='0000';
+      if(d.config.selfReward===8000)d.config.selfReward=10000;
+      d.trainers.forEach(t=>{if(!t.pin)t.pin='0000'});
+      d.clients.forEach(c=>{if(!c.courses)c.courses=[];});
+      return d;
+    }
+    return defaultData();
+  }catch{return defaultData()}
+}
+function saveData(){localStorage.setItem(STORAGE_KEY,JSON.stringify(D))}
+function mkKey(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}
+function mdsp(d){return d.getFullYear()+'年'+(d.getMonth()+1)+'月'}
+function gid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function fmt(n){return n.toLocaleString()+'円'}
+
+// ========== Lock Screen ==========
+function renderLockTrainers(){
+  const sel=document.getElementById('lockTrainerSelect');
+  sel.innerHTML='<option value="">-- トレーナーを選択 --</option>'+
+    D.trainers.map(t=>`<option value="${t.id}">${t.name}</option>`).join('')+
+    '<option value="__master__">管理者</option>';
+}
+function onLockTrainerChange(){
+  lockSelectedTrainer=document.getElementById('lockTrainerSelect').value;
+  pinBuffer='';
+  updatePinDots();
+  document.getElementById('pinError').textContent='';
+  const nameEl=document.getElementById('lockTrainerName');
+  if(lockSelectedTrainer==='__master__')nameEl.textContent='管理者モード';
+  else{const t=D.trainers.find(x=>x.id===lockSelectedTrainer);nameEl.textContent=t?t.name:'';}
+}
+function pinInput(n){
+  if(!lockSelectedTrainer){document.getElementById('pinError').textContent='トレーナーを選択してください';return}
+  if(pinBuffer.length>=4)return;
+  pinBuffer+=String(n);
+  updatePinDots();
+  if(pinBuffer.length===4)setTimeout(checkPin,200);
+}
+function pinDelete(){pinBuffer=pinBuffer.slice(0,-1);updatePinDots();document.getElementById('pinError').textContent=''}
+function updatePinDots(){
+  const dots=document.querySelectorAll('#pinDots .pin-dot');
+  dots.forEach((d,i)=>d.classList.toggle('filled',i<pinBuffer.length));
+}
+function checkPin(){
+  if(lockSelectedTrainer==='__master__'){
+    if(pinBuffer===D.config.masterPin){isMaster=true;currentTrainer='';unlockApp();return}
+  } else {
+    const t=D.trainers.find(x=>x.id===lockSelectedTrainer);
+    if(t&&pinBuffer===t.pin){isMaster=false;currentTrainer=t.id;unlockApp();return}
+  }
+  document.getElementById('pinError').textContent='PINが違います';
+  pinBuffer='';updatePinDots();
+}
+function unlockApp(){
+  document.getElementById('lockScreen').classList.remove('open');
+  render();
+}
+function lockApp(){
+  pinBuffer='';lockSelectedTrainer='';
+  document.getElementById('lockTrainerSelect').value='';
+  document.getElementById('lockTrainerName').textContent='';
+  document.getElementById('pinError').textContent='';
+  updatePinDots();
+  renderLockTrainers();
+  document.getElementById('lockScreen').classList.add('open');
+}
+
+// ========== Cumulative ==========
+function getCum(cid,upToMk,inclusive){
+  let t=0;const keys=Object.keys(D.sessions).sort();
+  for(const k of keys){
+    if(inclusive?k>upToMk:k>=upToMk)break;
+    const s=D.sessions[k]?.[cid];if(s)t+=s.count||0;
+  }
+  return t;
+}
+
+// ========== Tickets ==========
+function getTicketInfo(c){
+  let total=0,used=0;
+  (c.courses||[]).forEach(x=>{total+=x.total;used+=x.used||0});
+  return{total,used,remaining:total-used};
+}
+function recalcUsed(c){
+  let totalUsed=0;
+  for(const k of Object.keys(D.sessions).sort()){
+    const s=D.sessions[k]?.[c.id];if(s)totalUsed+=s.count||0;
+  }
+  let remain=totalUsed;
+  (c.courses||[]).forEach(x=>{const u=Math.min(remain,x.total);x.used=u;remain-=u});
+}
+
+// ========== Last visit sorting ==========
+function getLastVisitMonth(cid){
+  const keys=Object.keys(D.sessions).sort().reverse();
+  for(const k of keys){
+    if(D.sessions[k]?.[cid]&&D.sessions[k][cid].count>0)return k;
+  }
+  return '0000-00';
+}
+
+// ========== Reward Calculation ==========
+// Discount logic:
+//   広告: 報酬は固定(adReward)。値引きしても報酬変わらない
+//   自己集客: 値引き額 = 定価 - 請求単価。報酬 = selfReward - 値引き額
+//   モニター: 売上0、報酬固定(monitorReward)
+function calcDiscount(client){
+  const price=client.customPrice||D.config.sessionPrice;
+  return Math.max(0,D.config.sessionPrice-price);
+}
+
+function calcReward(client,count,currentMk){
+  if(!count)return{baseRate:0,netRate:0,reward:0,discount:0,split:false};
+  const cfg=D.config;
+  const disc=calcDiscount(client);
+
+  if(client.type==='monitor'){
+    return{baseRate:cfg.monitorReward,netRate:cfg.monitorReward,reward:cfg.monitorReward*count,discount:0,split:false};
+  }
+
+  const cumBefore=getCum(client.id,currentMk,false);
+  const cumIncluding=getCum(client.id,currentMk,true);
+
+  if(client.type==='self'){
+    const netRate=cfg.selfReward-disc;
+    return{baseRate:cfg.selfReward,netRate,reward:netRate*count,discount:disc,split:false};
+  }
+
+  // ad client
+  if(cumBefore>cfg.threshold){
+    // already upgraded - use selfReward, apply discount
+    const netRate=cfg.selfReward-disc;
+    return{baseRate:cfg.selfReward,netRate,reward:netRate*count,discount:disc,split:false,upgraded:true};
+  } else if(cumIncluding>cfg.threshold){
+    // crosses threshold this month - split
+    const before=cfg.threshold-cumBefore;
+    const after=count-before;
+    const rBefore=cfg.adReward*Math.max(0,before); // ad: no discount
+    const rAfter=(cfg.selfReward-disc)*Math.max(0,after); // after upgrade: discount applies
+    return{baseRate:cfg.adReward,netRate:cfg.adReward,reward:rBefore+rAfter,discount:disc,split:true,
+      splitDetail:`${before}回×${fmt(cfg.adReward)} + ${after}回×${fmt(cfg.selfReward-disc)}`};
+  } else {
+    // still ad - fixed reward, no discount
+    return{baseRate:cfg.adReward,netRate:cfg.adReward,reward:cfg.adReward*count,discount:0,split:false};
+  }
+}
+
+// ========== Tabs ==========
+function switchTab(i){
+  document.querySelectorAll('.tab').forEach((t,j)=>t.classList.toggle('active',j===i));
+  document.querySelectorAll('.section').forEach((s,j)=>s.classList.toggle('active',j===i));
+  render();
+}
+function changeMonth(d){currentMonth.setMonth(currentMonth.getMonth()+d);render()}
+
+// ========== Trainer ==========
+function addTrainer(){
+  const inp=document.getElementById('newTrainerName');
+  const name=inp.value.trim();if(!name)return;
+  D.trainers.push({id:gid(),name,pin:'0000'});
+  inp.value='';saveData();render();renderLockTrainers();
+}
+function removeTrainer(id){
+  if(!confirm('削除しますか？'))return;
+  D.trainers=D.trainers.filter(t=>t.id!==id);
+  if(currentTrainer===id){currentTrainer='';lockApp();}
+  saveData();render();renderLockTrainers();
+}
+function setTrainerPin(id,val){
+  const t=D.trainers.find(x=>x.id===id);
+  if(t)t.pin=val.padStart(4,'0').slice(0,4);
+  saveData();
+}
+function saveMasterPin(){
+  D.config.masterPin=document.getElementById('cfgMasterPin').value.padStart(4,'0').slice(0,4);
+  saveData();
+}
+
+// ========== Client Modal ==========
+function openAddClient(){
+  editingClientId=null;modalCoursesBuf=[];
+  document.getElementById('modalTitle').textContent='お客様追加';
+  document.getElementById('modalName').value='';
+  document.getElementById('modalType').value='ad';
+  document.getElementById('modalPrice').value='';
+  document.getElementById('modalDelete').style.display='none';
+  onModalTypeChange();renderModalCourses();
+  document.getElementById('clientModal').classList.add('open');
+}
+function openEditClient(id){
+  const c=D.clients.find(x=>x.id===id);if(!c)return;
+  editingClientId=id;
+  modalCoursesBuf=JSON.parse(JSON.stringify(c.courses||[]));
+  document.getElementById('modalTitle').textContent='お客様編集';
+  document.getElementById('modalName').value=c.name;
+  document.getElementById('modalType').value=c.type;
+  document.getElementById('modalPrice').value=c.customPrice||'';
+  document.getElementById('modalDelete').style.display='block';
+  onModalTypeChange();renderModalCourses();
+  document.getElementById('clientModal').classList.add('open');
+}
+function onModalTypeChange(){
+  const t=document.getElementById('modalType').value;
+  document.getElementById('modalPriceSection').style.display=t==='monitor'?'none':'block';
+}
+function closeModal(){document.getElementById('clientModal').classList.remove('open')}
+function saveClient(){
+  const name=document.getElementById('modalName').value.trim();
+  const type=document.getElementById('modalType').value;
+  const priceVal=document.getElementById('modalPrice').value;
+  if(!name){alert('お客様名を入力してください');return}
+  if(editingClientId){
+    const c=D.clients.find(x=>x.id===editingClientId);
+    c.name=name;c.type=type;
+    c.customPrice=priceVal?parseInt(priceVal):null;
+    c.courses=modalCoursesBuf;
+    recalcUsed(c);
+  } else {
+    D.clients.push({id:gid(),name,type,trainerId:currentTrainer||'',customPrice:priceVal?parseInt(priceVal):null,courses:modalCoursesBuf});
+  }
+  saveData();closeModal();render();
+}
+function deleteClient(){
+  if(!confirm('削除しますか？'))return;
+  D.clients=D.clients.filter(c=>c.id!==editingClientId);
+  for(const m in D.sessions)delete D.sessions[m]?.[editingClientId];
+  saveData();closeModal();render();
+}
+
+// ========== Courses in Modal ==========
+function addCourseInModal(){
+  const inp=document.getElementById('modalCourseTickets');
+  const v=parseInt(inp.value);if(!v||v<=0)return;
+  modalCoursesBuf.push({id:gid(),total:v,used:0});
+  inp.value='';renderModalCourses();
+}
+function removeCourseInModal(cid){modalCoursesBuf=modalCoursesBuf.filter(c=>c.id!==cid);renderModalCourses()}
+function renderModalCourses(){
+  const el=document.getElementById('modalCourses');
+  if(!modalCoursesBuf.length){el.innerHTML='<div style="color:#aaa;font-size:13px">コース未登録</div>';return}
+  el.innerHTML=modalCoursesBuf.map(c=>`<div class="course-item">
+    <span>${c.total}回コース（使用${c.used||0} / 残${c.total-(c.used||0)}）</span>
+    <span style="color:#c00;cursor:pointer;font-size:18px" onclick="removeCourseInModal('${c.id}')">✕</span>
+  </div>`).join('');
+}
+
+// ========== Session Count ==========
+function changeCount(cid,delta){
+  const client=D.clients.find(c=>c.id===cid);if(!client)return;
+  const m=mkKey(currentMonth);
+  if(!D.sessions[m])D.sessions[m]={};
+  if(!D.sessions[m][cid])D.sessions[m][cid]={count:0};
+  const nc=D.sessions[m][cid].count+delta;
+  if(nc<0)return;
+  if(delta>0&&client.courses&&client.courses.length>0){
+    recalcUsed(client);
+    if(getTicketInfo(client).remaining<=0){alert('チケットの残回数がありません。\nお客様管理からコースを追加してください。');return}
+  }
+  D.sessions[m][cid].count=nc;
+  if(client.courses&&client.courses.length>0)recalcUsed(client);
+  saveData();render();
+}
+
+// ========== Config ==========
+function saveCfg(){
+  D.config.sessionPrice=parseInt(document.getElementById('cfgPrice').value)||18000;
+  D.config.adReward=parseInt(document.getElementById('cfgAd').value)||6000;
+  D.config.selfReward=parseInt(document.getElementById('cfgSelf').value)||10000;
+  D.config.monitorReward=parseInt(document.getElementById('cfgMonitor').value)||2500;
+  D.config.threshold=parseInt(document.getElementById('cfgThresh').value)||25;
+  saveData();render();
+}
+
+// ========== Export ==========
+function exportExcel(){
+  const m=mkKey(currentMonth);const clients=getClients();
+  const rows=[['No.','お客様名','集客区分','累計回数','当月回数','請求単価','値引き','報酬単価','当月報酬']];
+  let tR=0,tC=0;
+  clients.forEach((c,i)=>{
+    const s=D.sessions[m]?.[c.id]||{count:0};
+    const cum=getCum(c.id,m,true);
+    const r=calcReward(c,s.count,m);
+    tR+=r.reward;tC+=s.count;
+    const tl=c.type==='monitor'?'モニター':(c.type==='self'?'自己集客':'広告');
+    rows.push([i+1,c.name,tl,cum,s.count,c.customPrice||D.config.sessionPrice,r.discount,r.baseRate,r.reward]);
+  });
+  rows.push(['','合計','','',tC,'','','',tR]);
+  const ws=XLSX.utils.aoa_to_sheet(rows);const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,mdsp(currentMonth));
+  const tn=D.trainers.find(t=>t.id===currentTrainer);
+  XLSX.writeFile(wb,'resync_給与_'+(tn?.name||'全員')+'_'+m+'.xlsx');
+}
+function exportJSON(){
+  const blob=new Blob([JSON.stringify(D,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='resync_backup_'+mkKey(currentMonth)+'.json';a.click();
+}
+function importJSON(e){
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=function(ev){try{const d=JSON.parse(ev.target.result);if(d.config){D=d;saveData();render();alert('復元しました')}else alert('無効')}catch{alert('失敗')}};
+  r.readAsText(f);e.target.value='';
+}
+
+function getClients(){
+  let list=D.clients.filter(c=>!currentTrainer||c.trainerId===currentTrainer);
+  // Sort by last visit BEFORE current month (not during)
+  // This way, order stays fixed while entering data for the current month
+  const m=mkKey(currentMonth);
+  list.sort((a,b)=>{
+    const al=getLastVisitBefore(a.id,m);
+    const bl=getLastVisitBefore(b.id,m);
+    return bl.localeCompare(al);
+  });
+  return list;
+}
+// Get last visit month strictly BEFORE the given month key
+function getLastVisitBefore(cid,beforeMk){
+  const keys=Object.keys(D.sessions).sort().reverse();
+  for(const k of keys){
+    if(k>=beforeMk)continue;
+    if(D.sessions[k]?.[cid]&&D.sessions[k][cid].count>0)return k;
+  }
+  return '0000-00';
+}
+
+// ========== Render ==========
+function render(){
+  const m=mkKey(currentMonth),md=mdsp(currentMonth);
+  document.querySelectorAll('.month-label').forEach(el=>el.textContent=md);
+
+  const trainer=D.trainers.find(t=>t.id===currentTrainer);
+  document.getElementById('headerSub').textContent=(isMaster?'管理者モード':(trainer?trainer.name:''))+' - '+md;
+
+  // Show/hide settings tab based on master
+  const settingsTab=document.querySelectorAll('.tab')[3];
+  if(!isMaster){settingsTab.style.display='none'}else{settingsTab.style.display=''}
+
+  const clients=getClients();
+  let totalReward=0,totalCount=0;
+
+  const cdata=clients.map(c=>{
+    const s=D.sessions[m]?.[c.id]||{count:0};
+    const cumBefore=getCum(c.id,m,false);
+    const cumWith=cumBefore+s.count;
+    const r=calcReward(c,s.count,m);
+    totalReward+=r.reward;totalCount+=s.count;
+    const upgraded=c.type==='ad'&&cumWith>D.config.threshold;
+    let ti=null;
+    if(c.courses&&c.courses.length>0){recalcUsed(c);ti=getTicketInfo(c)}
+    return{...c,session:s,cumBefore,cumWith,calc:r,upgraded,ticketInfo:ti};
+  });
+
+  document.getElementById('totalReward').textContent=fmt(totalReward);
+  document.getElementById('totalDetail').textContent=totalCount+'セッション / '+clients.length+'名';
+  document.getElementById('totalReward2').textContent=fmt(totalReward);
+  document.getElementById('totalDetail2').textContent=totalCount+'セッション / '+clients.length+'名';
+
+  // Client cards
+  const cardsEl=document.getElementById('clientCards');
+  if(!clients.length){
+    cardsEl.innerHTML='<div class="empty"><div class="empty-icon">👤</div><div class="empty-text">お客様がまだ登録されていません<br>下の「+」ボタンから追加してください</div></div>';
+  } else {
+    cardsEl.innerHTML=cdata.map(c=>{
+      let bc,bt;
+      if(c.type==='monitor'){bc='badge-monitor';bt='モニター'}
+      else if(c.upgraded||c.calc.upgraded){bc='badge-upgraded';bt='広告→自己集客'}
+      else if(c.type==='ad'){bc='badge-ad';bt='広告'}
+      else{bc='badge-self';bt='自己集客'}
+
+      const ti=c.ticketInfo;
+      const hasT=ti!==null;
+      const noT=hasT&&ti.remaining<=0&&c.session.count===0;
+      const tBadge=hasT?`<span class="client-badge badge-ticket ${ti.remaining<=0?'out':''}">残${ti.remaining}回</span>`:'';
+      const plusOff=hasT&&ti.remaining<=0?'disabled':'';
+      const disc=c.calc.discount||0;
+
+      let brkText;
+      if(c.calc.split)brkText=c.calc.splitDetail;
+      else brkText=c.calc.netRate.toLocaleString()+'円 × '+c.session.count+'回';
+
+      const info=[`累計 ${c.cumWith}回`];
+      if(c.type!=='monitor')info.push(`報酬単価 ${c.calc.baseRate.toLocaleString()}円`);
+      if(disc>0)info.push(`値引 ${disc.toLocaleString()}円/回`);
+      if(c.customPrice)info.push(`請求 ${c.customPrice.toLocaleString()}円`);
+
+      return`<div class="client-card ${noT?'no-ticket':''}">
+        <div class="client-top">
+          <span class="client-name">${c.name}</span>
+          <div class="client-badges"><span class="client-badge ${bc}">${bt}</span>${tBadge}</div>
+        </div>
+        <div class="client-info">${info.map(x=>'<span>'+x+'</span>').join('')}</div>
+        <div class="counter-row">
+          <span class="counter-label">当月回数</span>
+          <div class="counter">
+            <button class="minus" onclick="changeCount('${c.id}',-1)" ${c.session.count<=0?'disabled':''}>−</button>
+            <span class="count">${c.session.count}</span>
+            <button class="plus" onclick="changeCount('${c.id}',1)" ${plusOff}>＋</button>
+          </div>
+        </div>
+        ${noT?'<div class="no-ticket-msg">チケット残数なし</div>':''}
+        <div class="reward-row">
+          <div><div class="reward-label">当月報酬</div><div class="reward-breakdown">${brkText}</div></div>
+          <div class="reward-amount">${fmt(c.calc.reward)}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // Summary
+  const tbody=document.getElementById('summaryBody');
+  const active=cdata.filter(c=>c.session.count>0);
+  tbody.innerHTML=active.map(c=>{
+    let tl;
+    if(c.type==='monitor')tl='<span style="color:#1565C0">モニター</span>';
+    else if(c.upgraded||c.calc.upgraded)tl='<span style="color:#6A1B9A">広告→自己</span>';
+    else tl=c.type==='ad'?'広告':'自己集客';
+    return`<tr><td style="text-align:left">${c.name}</td><td>${tl}</td><td>${c.session.count}</td><td>${c.calc.baseRate.toLocaleString()}</td><td>${c.calc.discount>0?c.calc.discount.toLocaleString():'-'}</td><td style="font-weight:600">${fmt(c.calc.reward)}</td></tr>`;
+  }).join('')+`<tr class="total-row"><td colspan="2">合計</td><td>${totalCount}</td><td></td><td></td><td>${fmt(totalReward)}</td></tr>`;
+
+  // Manage
+  document.getElementById('manageList').innerHTML=getClients().map(c=>{
+    const cum=getCum(c.id,mkKey(new Date(currentMonth.getFullYear(),currentMonth.getMonth()+1,1)),false);
+    let tl=c.type==='monitor'?'モニター':(c.type==='self'?'自己集客':'広告');
+    const ti=c.courses?.length?getTicketInfo(c):null;
+    const pr=c.customPrice?c.customPrice.toLocaleString()+'円':'定価';
+    const dc=calcDiscount(c);
+    const dcTxt=dc>0?' / 値引'+dc.toLocaleString()+'円':'';
+    const tkTxt=ti?' / 残'+ti.remaining+'回':'';
+    return`<div class="manage-card" onclick="openEditClient('${c.id}')">
+      <div><div class="manage-name">${c.name}</div>
+      <div class="manage-meta">${tl} / 累計${cum}回 / ${pr}${dcTxt}${tkTxt}</div></div>
+      <span style="color:#ccc;font-size:20px">›</span></div>`;
+  }).join('')||'<div class="empty"><div class="empty-text">お客様が登録されていません</div></div>';
+
+  // Settings (master only)
+  if(isMaster){
+    document.getElementById('cfgPrice').value=D.config.sessionPrice;
+    document.getElementById('cfgAd').value=D.config.adReward;
+    document.getElementById('cfgSelf').value=D.config.selfReward;
+    document.getElementById('cfgMonitor').value=D.config.monitorReward;
+    document.getElementById('cfgThresh').value=D.config.threshold;
+    document.getElementById('cfgMasterPin').value=D.config.masterPin;
+
+    document.getElementById('trainerSettings').innerHTML=D.trainers.map(t=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f5f5f5">
+        <span style="font-size:14px;font-weight:600">${t.name}</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:12px;color:#888">PIN:</span>
+          <input style="width:60px;padding:6px;border:1px solid #ddd;border-radius:6px;text-align:center;font-size:14px" type="text" maxlength="4" value="${t.pin}" onchange="setTrainerPin('${t.id}',this.value)">
+          <span style="color:#c00;cursor:pointer;font-size:18px" onclick="removeTrainer('${t.id}')">✕</span>
+        </div>
+      </div>
+    `).join('');
+  }
+}
+
+// Init
+renderLockTrainers();
+</script>
+</body>
+</html>

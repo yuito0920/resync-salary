@@ -308,7 +308,7 @@ function defaultData(){return{
   trainers:[], // {id,name,pin}
   clients:[], // {id,name,type,trainerId,customPrice,courses:[{id,total,used}]}
   sessions:{}, // {'YYYY-MM':{clientId:{count}}}
-  lockedMonths:{} // {'YYYY-MM':{lockedAt:timestamp,lockedBy:trainerId}}
+  lockedMonths:{} // {'trainerId-YYYY-MM':{lockedAt:timestamp}}
 }}
 
 let D=loadData();
@@ -537,6 +537,7 @@ function saveClient(){
   const type=document.getElementById('modalType').value;
   const priceVal=document.getElementById('modalPrice').value;
   if(!name){alert('お客様名を入力してください');return}
+  if(modalCoursesBuf.length===0){alert('チケット（コース）を1つ以上登録してください');return}
   if(editingClientId){
     const c=D.clients.find(x=>x.id===editingClientId);
     c.name=name;c.type=type;
@@ -573,22 +574,24 @@ function renderModalCourses(){
 }
 
 // ========== Lock Month Functions ==========
-function isMonthLocked(mk){
-  return D.lockedMonths[mk]?true:false;
+function getLockKey(){
+  const m=mkKey(currentMonth);
+  return `${currentTrainer}-${m}`;
+}
+function isMonthLocked(){
+  return D.lockedMonths[getLockKey()]?true:false;
 }
 function lockMonth(){
-  const m=mkKey(currentMonth);
-  if(isMonthLocked(m))return;
+  if(isMonthLocked())return;
   if(!confirm(`${mdsp(currentMonth)}を確定しますか？\n\n確定後はデータを編集できなくなります。\n（管理者のみ確定解除が可能です）`))return;
-  D.lockedMonths[m]={lockedAt:Date.now(),lockedBy:currentTrainer||'master'};
+  D.lockedMonths[getLockKey()]={lockedAt:Date.now()};
   saveData();render();
   alert(`${mdsp(currentMonth)}を確定しました。\nデータの変更はできません。`);
 }
 function unlockMonth(){
-  const m=mkKey(currentMonth);
-  if(!isMonthLocked(m))return;
+  if(!isMonthLocked())return;
   if(!confirm(`${mdsp(currentMonth)}の確定を解除しますか？\n\n解除後はデータの編集が可能になります。`))return;
-  delete D.lockedMonths[m];
+  delete D.lockedMonths[getLockKey()];
   saveData();render();
   alert(`${mdsp(currentMonth)}の確定を解除しました。`);
 }
@@ -599,7 +602,7 @@ function changeCount(cid,delta){
   const m=mkKey(currentMonth);
 
   // Check if month is locked
-  if(isMonthLocked(m)&&!isMaster){
+  if(isMonthLocked()&&!isMaster){
     alert('この月は確定済みのため編集できません。\n管理者に確定解除を依頼してください。');
     return;
   }
@@ -713,7 +716,7 @@ function render(){
   document.getElementById('totalDetail2').textContent=totalCount+'セッション / '+clients.length+'名';
 
   // Lock Month Button
-  const locked=isMonthLocked(m);
+  const locked=isMonthLocked();
   const lockBtn=document.getElementById('lockMonthButton');
   if(locked&&isMaster){
     lockBtn.innerHTML=`<button class="lock-month-btn unlock" onclick="unlockMonth()">🔓 ${md}の確定を解除（管理者）</button>`;

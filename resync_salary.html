@@ -254,6 +254,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
     </div>
     <div class="hint" style="margin-top:4px">管理者PINで全トレーナーの情報を閲覧できます</div>
   </div>
+  <div class="setting-group" id="lockManagementGroup">
+    <h3>確定状況管理（管理者専用）</h3>
+    <div id="lockManagementList"></div>
+  </div>
   <div class="setting-group">
     <h3>データ</h3>
     <button class="export-btn primary" onclick="exportExcel()">Excel出力</button>
@@ -595,6 +599,18 @@ function unlockMonth(){
   saveData();render();
   alert(`${mdsp(currentMonth)}の確定を解除しました。`);
 }
+function unlockSpecificMonth(lockKey){
+  if(!isMaster)return;
+  const parts=lockKey.split('-');
+  const trainerId=parts[0];
+  const month=parts.slice(1).join('-');
+  const trainer=D.trainers.find(t=>t.id===trainerId);
+  const trainerName=trainer?trainer.name:'不明';
+  if(!confirm(`${trainerName}の${month}の確定を解除しますか？`))return;
+  delete D.lockedMonths[lockKey];
+  saveData();render();
+  alert(`${trainerName}の${month}の確定を解除しました。`);
+}
 
 // ========== Session Count ==========
 function changeCount(cid,delta){
@@ -823,6 +839,31 @@ function render(){
         </div>
       </div>
     `).join('');
+
+    // Lock Management List
+    const locks=Object.keys(D.lockedMonths).sort().reverse();
+    const lockEl=document.getElementById('lockManagementList');
+    if(locks.length===0){
+      lockEl.innerHTML='<div style="color:#aaa;font-size:13px;text-align:center;padding:20px">確定済みの月はありません</div>';
+    }else{
+      lockEl.innerHTML=locks.map(key=>{
+        const parts=key.split('-');
+        const trainerId=parts[0];
+        const month=parts.slice(1).join('-');
+        const trainer=D.trainers.find(t=>t.id===trainerId);
+        const trainerName=trainer?trainer.name:'不明';
+        const lockData=D.lockedMonths[key];
+        const lockDate=new Date(lockData.lockedAt);
+        const lockDateStr=lockDate.getFullYear()+'/'+(lockDate.getMonth()+1)+'/'+lockDate.getDate()+' '+String(lockDate.getHours()).padStart(2,'0')+':'+String(lockDate.getMinutes()).padStart(2,'0');
+        return`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px;border-bottom:1px solid #f5f5f5;background:#FFF3E0;border-radius:8px;margin-bottom:8px">
+          <div>
+            <div style="font-size:14px;font-weight:600;color:#E65100">${trainerName} - ${month}</div>
+            <div style="font-size:11px;color:#B8860B;margin-top:2px">確定日時: ${lockDateStr}</div>
+          </div>
+          <button style="padding:8px 16px;background:#E65100;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600" onclick="unlockSpecificMonth('${key}')">解除</button>
+        </div>`;
+      }).join('');
+    }
   }
 }
 

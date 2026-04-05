@@ -355,7 +355,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
 const LOCAL_CACHE_KEY='resync_cloud_cache';
 const API_URL_KEY='resync_api_url';
 
-let API_URL=localStorage.getItem(API_URL_KEY)||'';
+let API_URL=localStorage.getItem(API_URL_KEY)||'https://script.google.com/macros/s/AKfycbxyHC_MCAWuk97R-me08qUYuhQvYExub0yNwu9fuvPEdRMlMXBKk4KUaZaMmXgj598D/exec';
 let syncState='offline'; // online, syncing, offline, error
 let saveTimer=null;
 const SAVE_DELAY=1500; // 1.5 second debounce for saving to cloud

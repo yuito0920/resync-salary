@@ -8,9 +8,10 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;background:#f5f5f5;color:#333;-webkit-tap-highlight-color:transparent}
-.header{background:linear-gradient(135deg,#1B7742,#2E9D5E);color:#fff;padding:16px 20px;position:sticky;top:0;z-index:100}
+.header{background:linear-gradient(135deg,#2B5797,#4472C4);color:#fff;padding:16px 20px;position:sticky;top:0;z-index:100}
 .header h1{font-size:20px;font-weight:700}
 .header-sub{font-size:12px;opacity:.8;margin-top:2px}
+
 .sync-status{font-size:11px;margin-top:4px;display:flex;align-items:center;gap:6px}
 .sync-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
 .sync-dot.online{background:#90EE90}
@@ -18,9 +19,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
 .sync-dot.offline{background:#FF6347}
 .sync-dot.error{background:#FF0000}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.loading-overlay{display:none;position:fixed;inset:0;background:rgba(255,255,255,.9);z-index:400;align-items:center;justify-content:center;flex-direction:column}
+.loading-overlay.open{display:flex}
+.setup-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:350;align-items:center;justify-content:center;padding:20px}
+.setup-overlay.open{display:flex}
 .tabs{display:flex;background:#fff;border-bottom:2px solid #e0e0e0;position:sticky;top:60px;z-index:99;overflow-x:auto}
 .tab{flex:1;min-width:70px;padding:12px 6px;text-align:center;font-size:12px;font-weight:600;color:#888;cursor:pointer;border-bottom:3px solid transparent;transition:.2s;white-space:nowrap}
-.tab.active{color:#1B7742;border-bottom-color:#1B7742}
+.tab.active{color:#2B5797;border-bottom-color:#2B5797}
 .content{max-width:600px;margin:0 auto;padding:16px}
 .section{display:none}.section.active{display:block}
 .month-bar{display:flex;align-items:center;justify-content:space-between;background:#fff;border-radius:12px;padding:12px 16px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,.08)}
@@ -28,7 +33,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
 .month-bar button:active{background:#ddd}
 .month-label{font-size:18px;font-weight:700}
 .trainer-select{width:100%;padding:12px;border:2px solid #e0e0e0;border-radius:10px;font-size:16px;background:#fff;margin-bottom:16px;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' stroke-width='2' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
-.summary-card{background:linear-gradient(135deg,#1B7742,#145a32);color:#fff;border-radius:16px;padding:20px;margin-bottom:20px;text-align:center}
+.summary-card{background:linear-gradient(135deg,#2B5797,#1a3d6e);color:#fff;border-radius:16px;padding:20px;margin-bottom:20px;text-align:center}
 .summary-card .label{font-size:13px;opacity:.8}
 .summary-card .amount{font-size:36px;font-weight:800;margin:8px 0}
 .summary-card .detail{font-size:12px;opacity:.7}
@@ -57,11 +62,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
 .counter .count{font-size:28px;font-weight:800;min-width:50px;text-align:center}
 .reward-row{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid #f0f0f0}
 .reward-label{font-size:12px;color:#888}
-.reward-amount{font-size:18px;font-weight:700;color:#1B7742}
+.reward-amount{font-size:18px;font-weight:700;color:#2B5797}
 .reward-breakdown{font-size:11px;color:#999;margin-top:4px}
 .no-ticket-msg{color:#e74c3c;font-size:12px;font-weight:600;margin-top:8px;text-align:center}
 .add-btn{width:100%;padding:16px;border:2px dashed #ccc;border-radius:14px;background:none;font-size:16px;color:#888;cursor:pointer;margin-bottom:12px}
 .add-btn:active{background:#f9f9f9}
+
+/* Lock Month Button */
+.lock-month-btn{width:100%;padding:16px;border:none;border-radius:14px;font-size:16px;font-weight:600;cursor:pointer;margin-bottom:12px}
+.lock-month-btn.lock{background:linear-gradient(135deg,#2B5797,#1a3d6e);color:#fff}
+.lock-month-btn.unlock{background:#FFF3E0;color:#E65100;border:2px solid #E65100}
+.lock-month-btn:disabled{opacity:.5;cursor:not-allowed}
+.locked-badge{display:inline-flex;align-items:center;gap:4px;background:#FFF3E0;color:#E65100;padding:4px 10px;border-radius:12px;font-size:12px;font-weight:600;margin-left:8px}
+.locked-overlay{position:absolute;inset:0;background:rgba(255,243,224,.95);border-radius:14px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px}
+.locked-overlay-text{font-size:14px;font-weight:700;color:#E65100}
+.locked-overlay-detail{font-size:11px;color:#B8860B}
 
 /* Modal */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:center;justify-content:center;padding:20px}
@@ -73,7 +88,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
 .modal-actions{display:flex;gap:10px;margin-top:20px}
 .modal-actions button{flex:1;padding:14px;border:none;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer}
 .btn-cancel{background:#f0f0f0;color:#666}
-.btn-save{background:#1B7742;color:#fff}
+.btn-save{background:#2B5797;color:#fff}
 .btn-delete{background:#fee;color:#c00;padding:14px;border:none;border-radius:10px;font-size:14px;cursor:pointer;width:100%;margin-top:10px}
 
 .manage-card{background:#fff;border-radius:12px;padding:14px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 1px 3px rgba(0,0,0,.06);cursor:pointer}
@@ -82,18 +97,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
 .manage-meta{font-size:12px;color:#888;margin-top:2px}
 
 .setting-group{background:#fff;border-radius:12px;padding:16px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
-.setting-group h3{font-size:14px;font-weight:700;margin-bottom:12px;color:#1B7742}
+.setting-group h3{font-size:14px;font-weight:700;margin-bottom:12px;color:#2B5797}
 .setting-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f5f5f5}
 .setting-row:last-child{border-bottom:none}
 .setting-label{font-size:14px}
 .setting-val{display:flex;align-items:center;gap:4px}
 .setting-input{width:100px;padding:8px 10px;border:2px solid #e0e0e0;border-radius:8px;font-size:16px;text-align:right}
 .export-btn{width:100%;padding:14px;border:none;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer;margin-bottom:10px}
-.export-btn.primary{background:#1B7742;color:#fff}
+.export-btn.primary{background:#2B5797;color:#fff}
 .export-btn.secondary{background:#f0f0f0;color:#333}
 
 .summary-table{width:100%;border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:16px}
-.summary-table th{background:#1B7742;color:#fff;padding:10px 6px;font-size:11px;text-align:center}
+.summary-table th{background:#2B5797;color:#fff;padding:10px 6px;font-size:11px;text-align:center}
 .summary-table td{padding:10px 6px;font-size:12px;text-align:center;border-bottom:1px solid #f0f0f0}
 .summary-table tr:last-child td{border-bottom:none}
 .summary-table .total-row{background:#FFF8E1;font-weight:700}
@@ -102,19 +117,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
 .trainer-tag .remove{cursor:pointer;color:#c00;font-weight:700}
 .trainer-input-row{display:flex;gap:8px;margin-top:12px}
 .trainer-input-row input{flex:1}
-.trainer-input-row button{padding:10px 20px;background:#1B7742;color:#fff;border:none;border-radius:10px;font-size:14px;cursor:pointer;white-space:nowrap}
+.trainer-input-row button{padding:10px 20px;background:#2B5797;color:#fff;border:none;border-radius:10px;font-size:14px;cursor:pointer;white-space:nowrap}
 
 .empty{text-align:center;padding:40px 20px;color:#aaa}
 .empty-icon{font-size:48px;margin-bottom:12px}
 .empty-text{font-size:14px}
 
 .course-section{margin-top:14px;padding-top:14px;border-top:1px dashed #e0e0e0}
-.course-section h4{font-size:13px;color:#1B7742;margin-bottom:8px}
+.course-section h4{font-size:13px;color:#2B5797;margin-bottom:8px}
 .course-item{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:13px;border-bottom:1px solid #f8f8f8}
 .course-item:last-child{border-bottom:none}
 .input-row{display:flex;gap:8px;align-items:center;margin-top:6px}
 .input-row input{flex:1;padding:8px;border:2px solid #e0e0e0;border-radius:8px;font-size:14px}
-.input-row button{padding:8px 14px;border:none;border-radius:8px;font-size:14px;cursor:pointer;background:#1B7742;color:#fff;white-space:nowrap}
+.input-row button{padding:8px 14px;border:none;border-radius:8px;font-size:14px;cursor:pointer;background:#2B5797;color:#fff;white-space:nowrap}
 .input-sm{width:80px!important;flex:none!important}
 .hint{font-size:11px;color:#999;margin-top:4px}
 
@@ -122,11 +137,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
 .lock-overlay{display:none;position:fixed;inset:0;background:#f5f5f5;z-index:300;align-items:center;justify-content:center;flex-direction:column}
 .lock-overlay.open{display:flex}
 .lock-box{background:#fff;border-radius:20px;padding:40px 32px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.1);width:90%;max-width:340px}
-.lock-box h2{font-size:20px;margin-bottom:8px;color:#1B7742}
+.lock-box h2{font-size:20px;margin-bottom:8px;color:#2B5797}
 .lock-box p{font-size:13px;color:#888;margin-bottom:20px}
 .pin-dots{display:flex;gap:12px;justify-content:center;margin-bottom:24px}
 .pin-dot{width:18px;height:18px;border-radius:50%;border:2px solid #ccc;background:#fff;transition:.2s}
-.pin-dot.filled{background:#1B7742;border-color:#1B7742}
+.pin-dot.filled{background:#2B5797;border-color:#2B5797}
 .pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:240px;margin:0 auto}
 .pin-key{width:70px;height:56px;border:none;border-radius:12px;font-size:22px;font-weight:600;background:#f0f0f0;cursor:pointer;display:flex;align-items:center;justify-content:center;margin:0 auto}
 .pin-key:active{background:#ddd}
@@ -136,52 +151,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
 
 /* Trainer PIN setup */
 .pin-setup-row{display:flex;gap:8px;align-items:center;margin-top:8px}
-.pin-display{font-size:14px;color:#1B7742;font-weight:600;letter-spacing:4px}
-
-/* Loading overlay */
-.loading-overlay{display:none;position:fixed;inset:0;background:rgba(255,255,255,.85);z-index:400;align-items:center;justify-content:center;flex-direction:column}
-.loading-overlay.open{display:flex}
-.loading-spinner{width:48px;height:48px;border:4px solid #e0e0e0;border-top-color:#1B7742;border-radius:50%;animation:spin .8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-.loading-text{margin-top:16px;font-size:14px;color:#666}
-
-/* API URL setup */
-.setup-overlay{display:none;position:fixed;inset:0;background:#f5f5f5;z-index:350;align-items:center;justify-content:center;flex-direction:column}
-.setup-overlay.open{display:flex}
-.setup-box{background:#fff;border-radius:20px;padding:32px 24px;box-shadow:0 4px 20px rgba(0,0,0,.1);width:90%;max-width:440px}
-.setup-box h2{font-size:18px;margin-bottom:12px;color:#1B7742}
-.setup-box p{font-size:13px;color:#666;margin-bottom:16px;line-height:1.6}
-.setup-box input{width:100%;padding:12px;border:2px solid #e0e0e0;border-radius:10px;font-size:14px;margin-bottom:12px}
-.setup-box button{width:100%;padding:14px;border:none;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer;background:#1B7742;color:#fff}
-.setup-box button:disabled{opacity:.5;cursor:not-allowed}
-.setup-error{color:#c00;font-size:13px;margin-top:8px;min-height:20px}
-
-/* Cloud badge */
-.cloud-badge{display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,.2);padding:2px 8px;border-radius:10px;font-size:11px;margin-left:8px}
+.pin-display{font-size:14px;color:#2B5797;font-weight:600;letter-spacing:4px}
 </style>
 </head>
 <body>
 
-<!-- Loading Overlay -->
-<div class="loading-overlay" id="loadingOverlay">
-  <div class="loading-spinner"></div>
-  <div class="loading-text" id="loadingText">データを読み込み中...</div>
-</div>
-
-<!-- API URL Setup -->
-<div class="setup-overlay" id="setupOverlay">
-  <div class="setup-box">
-    <h2>クラウド版 初期設定</h2>
-    <p>Google Apps ScriptのウェブアプリURLを入力してください。<br>
-    管理者からURLを受け取ってください。</p>
-    <input id="apiUrlInput" placeholder="https://script.google.com/macros/s/xxxx/exec" type="url">
-    <button id="apiUrlSaveBtn" onclick="saveApiUrl()">接続テスト＆保存</button>
-    <div class="setup-error" id="setupError"></div>
-  </div>
-</div>
-
 <!-- Lock Screen -->
-<div class="lock-overlay" id="lockScreen">
+<div class="lock-overlay open" id="lockScreen">
   <div class="lock-box">
     <h2>resync 給与計算</h2>
     <p>トレーナーを選択してPINを入力</p>
@@ -212,12 +188,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
 
 <!-- Main App -->
 <div class="header">
-  <h1>resync 給与計算<span class="cloud-badge">☁ クラウド</span></h1>
+  <h1>resync 給与計算</h1>
   <div class="header-sub" id="headerSub"></div>
-  <div class="sync-status" id="syncStatus">
-    <span class="sync-dot online" id="syncDot"></span>
-    <span id="syncText">接続済み</span>
-  </div>
+  <div class="sync-status"><span class="sync-dot offline" id="syncDot"></span><span id="syncText">接続中...</span></div>
 </div>
 <div class="tabs" id="mainTabs">
   <div class="tab active" onclick="switchTab(0)">入力</div>
@@ -239,6 +212,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
     <div class="amount" id="totalReward">-</div>
     <div class="detail" id="totalDetail"></div>
   </div>
+  <div id="lockMonthButton"></div>
   <div id="clientCards"></div>
   <button class="add-btn" onclick="openAddClient()">+ 新しいお客様を追加</button>
 </div>
@@ -293,16 +267,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
     </div>
     <div class="hint" style="margin-top:4px">管理者PINで全トレーナーの情報を閲覧できます</div>
   </div>
+  <div class="setting-group" id="lockManagementGroup">
+    <h3>確定状況管理（管理者専用）</h3>
+    <div id="lockManagementList"></div>
+  </div>
   <div class="setting-group">
-    <h3>クラウド接続</h3>
-    <div class="setting-row">
-      <span class="setting-label">API URL</span>
-      <button style="padding:8px 16px;border:none;border-radius:8px;background:#f0f0f0;cursor:pointer;font-size:13px" onclick="showApiSetup()">変更</button>
-    </div>
-    <div class="setting-row">
-      <span class="setting-label">手動同期</span>
-      <button style="padding:8px 16px;border:none;border-radius:8px;background:#1B7742;color:#fff;cursor:pointer;font-size:13px" onclick="syncFromCloud()">サーバーから再取得</button>
-    </div>
+    <h3>クラウド同期</h3>
+    <button class="export-btn primary" onclick="syncFromCloud()">サーバーから再取得</button>
+    <button class="export-btn secondary" onclick="showApiSetup()">API URL設定</button>
   </div>
   <div class="setting-group">
     <h3>データ</h3>
@@ -354,17 +326,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;bac
 // ========== Cloud Storage Configuration ==========
 const LOCAL_CACHE_KEY='resync_cloud_cache';
 const API_URL_KEY='resync_api_url';
-
 let API_URL=localStorage.getItem(API_URL_KEY)||'https://script.google.com/macros/s/AKfycbxyHC_MCAWuk97R-me08qUYuhQvYExub0yNwu9fuvPEdRMlMXBKk4KUaZaMmXgj598D/exec';
-let syncState='offline'; // online, syncing, offline, error
+let syncState='offline';
 let saveTimer=null;
-const SAVE_DELAY=1500; // 1.5 second debounce for saving to cloud
+const SAVE_DELAY=1500;
 
 function defaultData(){return{
   config:{sessionPrice:18000,adReward:6000,selfReward:10000,monitorReward:2500,threshold:25,masterPin:'0000'},
-  trainers:[], // {id,name,pin}
-  clients:[], // {id,name,type,trainerId,customPrice,courses:[{id,total,used}]}
-  sessions:{} // {'YYYY-MM':{clientId:{count}}}
+  trainers:[],
+  clients:[],
+  sessions:{},
+  lockedMonths:{}
 }}
 
 let D=loadLocalCache();
@@ -376,30 +348,22 @@ let modalCoursesBuf=[];
 let pinBuffer='';
 let lockSelectedTrainer='';
 
-// ========== Cloud Data Functions ==========
 function loadLocalCache(){
   try{
     const d=JSON.parse(localStorage.getItem(LOCAL_CACHE_KEY));
-    if(d&&d.config){
-      migrateData(d);
-      return d;
-    }
+    if(d&&d.config){migrateData(d);return d;}
     return defaultData();
   }catch{return defaultData()}
 }
-
 function migrateData(d){
   if(!d.config.monitorReward)d.config.monitorReward=2500;
   if(!d.config.masterPin)d.config.masterPin='0000';
   if(d.config.selfReward===8000)d.config.selfReward=10000;
   (d.trainers||[]).forEach(t=>{if(!t.pin)t.pin='0000'});
   (d.clients||[]).forEach(c=>{if(!c.courses)c.courses=[];});
+  if(!d.lockedMonths)d.lockedMonths={};
 }
-
-function saveLocalCache(){
-  localStorage.setItem(LOCAL_CACHE_KEY,JSON.stringify(D));
-}
-
+function saveLocalCache(){localStorage.setItem(LOCAL_CACHE_KEY,JSON.stringify(D))}
 function updateSyncStatus(state,text){
   syncState=state;
   const dot=document.getElementById('syncDot');
@@ -408,7 +372,6 @@ function updateSyncStatus(state,text){
   dot.className='sync-dot '+state;
   txt.textContent=text||{online:'接続済み',syncing:'同期中...',offline:'オフライン',error:'接続エラー'}[state]||'';
 }
-
 async function fetchFromCloud(){
   if(!API_URL)return null;
   updateSyncStatus('syncing','読み込み中...');
@@ -425,15 +388,12 @@ async function fetchFromCloud(){
     return null;
   }
 }
-
 async function saveToCloud(){
   if(!API_URL)return false;
   updateSyncStatus('syncing','保存中...');
   try{
     const res=await fetch(API_URL+'?action=saveData',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(D)
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(D)
     });
     if(!res.ok)throw new Error('HTTP '+res.status);
     const result=await res.json();
@@ -447,38 +407,23 @@ async function saveToCloud(){
     return false;
   }
 }
-
 function saveData(){
-  // Always save locally first (instant)
   saveLocalCache();
-  // Debounce cloud save
   if(saveTimer)clearTimeout(saveTimer);
   saveTimer=setTimeout(()=>saveToCloud(),SAVE_DELAY);
 }
-
 async function syncFromCloud(){
   showLoading('サーバーからデータを取得中...');
   const data=await fetchFromCloud();
-  if(data){
-    migrateData(data);
-    D=data;
-    saveLocalCache();
-    render();
-    renderLockTrainers();
-    alert('サーバーから最新データを取得しました');
-  }else{
-    alert('サーバーからの取得に失敗しました。\nオフラインキャッシュを使用します。');
-  }
+  if(data){migrateData(data);D=data;saveLocalCache();render();renderLockTrainers();alert('サーバーから最新データを取得しました');}
+  else{alert('サーバーからの取得に失敗しました。');}
   hideLoading();
 }
-
-// ========== API URL Setup ==========
 function showApiSetup(){
   document.getElementById('apiUrlInput').value=API_URL;
   document.getElementById('setupError').textContent='';
   document.getElementById('setupOverlay').classList.add('open');
 }
-
 async function saveApiUrl(){
   const url=document.getElementById('apiUrlInput').value.trim();
   if(!url){document.getElementById('setupError').textContent='URLを入力してください';return}
@@ -490,33 +435,17 @@ async function saveApiUrl(){
     if(!res.ok)throw new Error('HTTP '+res.status);
     const data=await res.json();
     if(data.error)throw new Error(data.error);
-    // Success
-    API_URL=url;
-    localStorage.setItem(API_URL_KEY,url);
-    // Load server data
-    migrateData(data);
-    D=data;
-    saveLocalCache();
+    API_URL=url;localStorage.setItem(API_URL_KEY,url);
+    migrateData(data);D=data;saveLocalCache();
     document.getElementById('setupOverlay').classList.remove('open');
     updateSyncStatus('online','接続済み');
-    renderLockTrainers();
-    render();
+    renderLockTrainers();render();
   }catch(e){
-    document.getElementById('setupError').textContent='接続失敗: '+e.message+'\nURLが正しいか確認してください';
-  }finally{
-    btn.disabled=false;btn.textContent='接続テスト＆保存';
-  }
+    document.getElementById('setupError').textContent='接続失敗: '+e.message;
+  }finally{btn.disabled=false;btn.textContent='接続テスト＆保存';}
 }
-
-function showLoading(text){
-  document.getElementById('loadingText').textContent=text||'読み込み中...';
-  document.getElementById('loadingOverlay').classList.add('open');
-}
-function hideLoading(){
-  document.getElementById('loadingOverlay').classList.remove('open');
-}
-
-// ========== Utility ==========
+function showLoading(text){document.getElementById('loadingText').textContent=text||'読み込み中...';document.getElementById('loadingOverlay').classList.add('open')}
+function hideLoading(){document.getElementById('loadingOverlay').classList.remove('open')}
 function mkKey(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')}
 function mdsp(d){return d.getFullYear()+'年'+(d.getMonth()+1)+'月'}
 function gid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
@@ -570,12 +499,7 @@ function lockApp(){
   document.getElementById('lockTrainerName').textContent='';
   document.getElementById('pinError').textContent='';
   updatePinDots();
-  // Re-fetch from cloud on lock (so next login sees latest data)
-  if(API_URL){
-    fetchFromCloud().then(data=>{
-      if(data){migrateData(data);D=data;saveLocalCache();renderLockTrainers();}
-    });
-  }
+  if(API_URL){fetchFromCloud().then(data=>{if(data){migrateData(data);D=data;saveLocalCache();renderLockTrainers();}});}
   renderLockTrainers();
   document.getElementById('lockScreen').classList.add('open');
 }
@@ -615,6 +539,10 @@ function getLastVisitMonth(cid){
 }
 
 // ========== Reward Calculation ==========
+// Discount logic:
+//   広告: 報酬は固定(adReward)。値引きしても報酬変わらない
+//   自己集客: 値引き額 = 定価 - 請求単価。報酬 = selfReward - 値引き額
+//   モニター: 売上0、報酬固定(monitorReward)
 function calcDiscount(client){
   const price=client.customPrice||D.config.sessionPrice;
   return Math.max(0,D.config.sessionPrice-price);
@@ -639,16 +567,19 @@ function calcReward(client,count,currentMk){
 
   // ad client
   if(cumBefore>cfg.threshold){
+    // already upgraded - use selfReward, apply discount
     const netRate=cfg.selfReward-disc;
     return{baseRate:cfg.selfReward,netRate,reward:netRate*count,discount:disc,split:false,upgraded:true};
   } else if(cumIncluding>cfg.threshold){
+    // crosses threshold this month - split
     const before=cfg.threshold-cumBefore;
     const after=count-before;
-    const rBefore=cfg.adReward*Math.max(0,before);
-    const rAfter=(cfg.selfReward-disc)*Math.max(0,after);
+    const rBefore=cfg.adReward*Math.max(0,before); // ad: no discount
+    const rAfter=(cfg.selfReward-disc)*Math.max(0,after); // after upgrade: discount applies
     return{baseRate:cfg.adReward,netRate:cfg.adReward,reward:rBefore+rAfter,discount:disc,split:true,
       splitDetail:`${before}回×${fmt(cfg.adReward)} + ${after}回×${fmt(cfg.selfReward-disc)}`};
   } else {
+    // still ad - fixed reward, no discount
     return{baseRate:cfg.adReward,netRate:cfg.adReward,reward:cfg.adReward*count,discount:0,split:false};
   }
 }
@@ -717,6 +648,7 @@ function saveClient(){
   const type=document.getElementById('modalType').value;
   const priceVal=document.getElementById('modalPrice').value;
   if(!name){alert('お客様名を入力してください');return}
+  if(modalCoursesBuf.length===0){alert('チケット（コース）を1つ以上登録してください');return}
   if(editingClientId){
     const c=D.clients.find(x=>x.id===editingClientId);
     c.name=name;c.type=type;
@@ -752,10 +684,52 @@ function renderModalCourses(){
   </div>`).join('');
 }
 
+// ========== Lock Month Functions ==========
+function getLockKey(){
+  const m=mkKey(currentMonth);
+  return `${currentTrainer}-${m}`;
+}
+function isMonthLocked(){
+  return D.lockedMonths[getLockKey()]?true:false;
+}
+function lockMonth(){
+  if(isMonthLocked())return;
+  if(!confirm(`${mdsp(currentMonth)}を確定しますか？\n\n確定後はデータを編集できなくなります。\n（管理者のみ確定解除が可能です）`))return;
+  D.lockedMonths[getLockKey()]={lockedAt:Date.now()};
+  saveData();render();
+  alert(`${mdsp(currentMonth)}を確定しました。\nデータの変更はできません。`);
+}
+function unlockMonth(){
+  if(!isMonthLocked())return;
+  if(!confirm(`${mdsp(currentMonth)}の確定を解除しますか？\n\n解除後はデータの編集が可能になります。`))return;
+  delete D.lockedMonths[getLockKey()];
+  saveData();render();
+  alert(`${mdsp(currentMonth)}の確定を解除しました。`);
+}
+function unlockSpecificMonth(lockKey){
+  if(!isMaster)return;
+  const parts=lockKey.split('-');
+  const trainerId=parts[0];
+  const month=parts.slice(1).join('-');
+  const trainer=D.trainers.find(t=>t.id===trainerId);
+  const trainerName=trainer?trainer.name:'不明';
+  if(!confirm(`${trainerName}の${month}の確定を解除しますか？`))return;
+  delete D.lockedMonths[lockKey];
+  saveData();render();
+  alert(`${trainerName}の${month}の確定を解除しました。`);
+}
+
 // ========== Session Count ==========
 function changeCount(cid,delta){
   const client=D.clients.find(c=>c.id===cid);if(!client)return;
   const m=mkKey(currentMonth);
+
+  // Check if month is locked
+  if(isMonthLocked()&&!isMaster){
+    alert('この月は確定済みのため編集できません。\n管理者に確定解除を依頼してください。');
+    return;
+  }
+
   if(!D.sessions[m])D.sessions[m]={};
   if(!D.sessions[m][cid])D.sessions[m][cid]={count:0};
   const nc=D.sessions[m][cid].count+delta;
@@ -812,6 +786,8 @@ function importJSON(e){
 
 function getClients(){
   let list=D.clients.filter(c=>!currentTrainer||c.trainerId===currentTrainer);
+  // Sort by last visit BEFORE current month (not during)
+  // This way, order stays fixed while entering data for the current month
   const m=mkKey(currentMonth);
   list.sort((a,b)=>{
     const al=getLastVisitBefore(a.id,m);
@@ -820,6 +796,7 @@ function getClients(){
   });
   return list;
 }
+// Get last visit month strictly BEFORE the given month key
 function getLastVisitBefore(cid,beforeMk){
   const keys=Object.keys(D.sessions).sort().reverse();
   for(const k of keys){
@@ -861,6 +838,17 @@ function render(){
   document.getElementById('totalReward2').textContent=fmt(totalReward);
   document.getElementById('totalDetail2').textContent=totalCount+'セッション / '+clients.length+'名';
 
+  // Lock Month Button
+  const locked=isMonthLocked();
+  const lockBtn=document.getElementById('lockMonthButton');
+  if(locked&&isMaster){
+    lockBtn.innerHTML=`<button class="lock-month-btn unlock" onclick="unlockMonth()">🔓 ${md}の確定を解除（管理者）</button>`;
+  }else if(locked){
+    lockBtn.innerHTML=`<div style="background:#FFF3E0;padding:12px 16px;border-radius:12px;text-align:center;margin-bottom:16px"><span style="font-size:14px;font-weight:600;color:#E65100">🔒 ${md}は確定済みです</span><div style="font-size:12px;color:#B8860B;margin-top:4px">データの変更はできません</div></div>`;
+  }else{
+    lockBtn.innerHTML=`<button class="lock-month-btn lock" onclick="lockMonth()">🔒 ${md}を確定する</button>`;
+  }
+
   // Client cards
   const cardsEl=document.getElementById('clientCards');
   if(!clients.length){
@@ -877,7 +865,8 @@ function render(){
       const hasT=ti!==null;
       const noT=hasT&&ti.remaining<=0&&c.session.count===0;
       const tBadge=hasT?`<span class="client-badge badge-ticket ${ti.remaining<=0?'out':''}">残${ti.remaining}回</span>`:'';
-      const plusOff=hasT&&ti.remaining<=0?'disabled':'';
+      const plusOff=(hasT&&ti.remaining<=0)||locked?'disabled':'';
+      const minusOff=locked?'disabled':'';
       const disc=c.calc.discount||0;
 
       let brkText;
@@ -898,7 +887,7 @@ function render(){
         <div class="counter-row">
           <span class="counter-label">当月回数</span>
           <div class="counter">
-            <button class="minus" onclick="changeCount('${c.id}',-1)" ${c.session.count<=0?'disabled':''}>−</button>
+            <button class="minus" onclick="changeCount('${c.id}',-1)" ${c.session.count<=0||minusOff?'disabled':''}>−</button>
             <span class="count">${c.session.count}</span>
             <button class="plus" onclick="changeCount('${c.id}',1)" ${plusOff}>＋</button>
           </div>
@@ -957,33 +946,67 @@ function render(){
         </div>
       </div>
     `).join('');
+
+    // Lock Management List
+    const locks=Object.keys(D.lockedMonths).sort().reverse();
+    const lockEl=document.getElementById('lockManagementList');
+    if(locks.length===0){
+      lockEl.innerHTML='<div style="color:#aaa;font-size:13px;text-align:center;padding:20px">確定済みの月はありません</div>';
+    }else{
+      lockEl.innerHTML=locks.map(key=>{
+        const parts=key.split('-');
+        const trainerId=parts[0];
+        const month=parts.slice(1).join('-');
+        const trainer=D.trainers.find(t=>t.id===trainerId);
+        const trainerName=trainer?trainer.name:'不明';
+        const lockData=D.lockedMonths[key];
+        const lockDate=new Date(lockData.lockedAt);
+        const lockDateStr=lockDate.getFullYear()+'/'+(lockDate.getMonth()+1)+'/'+lockDate.getDate()+' '+String(lockDate.getHours()).padStart(2,'0')+':'+String(lockDate.getMinutes()).padStart(2,'0');
+        return`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px;border-bottom:1px solid #f5f5f5;background:#FFF3E0;border-radius:8px;margin-bottom:8px">
+          <div>
+            <div style="font-size:14px;font-weight:600;color:#E65100">${trainerName} - ${month}</div>
+            <div style="font-size:11px;color:#B8860B;margin-top:2px">確定日時: ${lockDateStr}</div>
+          </div>
+          <button style="padding:8px 16px;background:#E65100;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-weight:600" onclick="unlockSpecificMonth('${key}')">解除</button>
+        </div>`;
+      }).join('');
+    }
   }
 }
 
 // ========== Init ==========
 async function init(){
-  if(!API_URL){
-    // No API URL configured - show setup
-    showApiSetup();
-    renderLockTrainers();
-    return;
-  }
-  // Try to fetch from cloud
+  if(!API_URL){showApiSetup();renderLockTrainers();return;}
   showLoading('サーバーに接続中...');
   const data=await fetchFromCloud();
-  if(data){
-    migrateData(data);
-    D=data;
-    saveLocalCache();
-  } else {
-    // Use local cache as fallback
-    updateSyncStatus('offline','オフラインモード');
-  }
+  if(data){migrateData(data);D=data;saveLocalCache();}
+  else{updateSyncStatus('offline','オフラインモード');}
   hideLoading();
   renderLockTrainers();
 }
-
 init();
 </script>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div style="text-align:center">
+    <div style="font-size:36px;margin-bottom:16px">⏳</div>
+    <div id="loadingText" style="font-size:16px;color:#666">読み込み中...</div>
+  </div>
+</div>
+
+<!-- API Setup Overlay -->
+<div class="setup-overlay" id="setupOverlay">
+  <div class="modal">
+    <h2>クラウド接続設定</h2>
+    <label>GAS API URL</label>
+    <input id="apiUrlInput" placeholder="https://script.google.com/macros/s/.../exec">
+    <div id="setupError" style="color:#c00;font-size:13px;margin-top:8px;white-space:pre-wrap"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="document.getElementById('setupOverlay').classList.remove('open')">キャンセル</button>
+      <button class="btn-save" id="apiUrlSaveBtn" onclick="saveApiUrl()">接続テスト＆保存</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
